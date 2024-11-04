@@ -549,7 +549,7 @@ $$
 \begin{align*}
 
 & \text{def marginal } E(\mathcal{v}, \mathcal{h}_{i}; \mathcal{w})
-=  -\sum_{j, k} (\mathcal{w}_{ijk}h_{i}v_{jk} + b_{jk})
+=  -\sum_{j, k} (\mathcal{w}_{ijk}h_{i}v_{jk} + b^{v}_{jk}v_{jk} + b^{h}_{i}h_{i})
 \\
 
 &
@@ -780,3 +780,347 @@ $$
 \end{align*}
 $$
 
+
+
+### Learning the weight
+
+$$
+\text{The obejctive is to minimize the KL divergence between $\mathbf{P}_{data}(\mathcal{v})$ and $\mathbf{P}(\mathcal{v}; \mathcal{w})$.}
+\\
+\text{The later is $\sum_{\mathcal{h}}\mathbf{P}(\mathcal{v}, \mathcal{h}; \mathcal{w})$, the marginal distribution of $\mathcal{v}$ from the joint distribution parameterized by $\mathcal{w}$}
+$$
+
+
+
+cited from "An Overview of Restricted Boltzmann Machines"
+
+
+$$
+\text{suppose we have N training samples, $\tau = \{\mathcal{v}^{(1)}, \cdots, \mathcal{v}^{(N)}\}$}
+\\
+
+\begin{align*}
+d_{kl}(\mathbf{P}_{data}(v) || \mathbf{P}(\mathcal{v}; \mathcal{w}))
+
+&= \sum_{v \in \tau} \mathbf{P}_{data}(v) \log(\frac{\mathbf{P}_{data}(v)}{\mathbf{P}(\mathcal{v}; \mathcal{w})})
+\\
+
+&= \sum_{v \in \tau} 
+[ 
+	\mathbf{P}_{data}(v) \log(\mathbf{P}_{data}(v)) - \mathbf{P}_{data}(v) \log(\mathbf{P}(\mathcal{v}; \mathcal{w}))
+]
+\end{align*}
+$$
+
+$$
+\text{minimizing the KL divergence is equavilent to}
+\\
+
+\begin{align*}
+
+\arg \min_{\mathcal{w}} d_{kl}(\mathbf{P}_{data}(v) || \mathbf{P}(\mathcal{v}; \mathcal{w}))
+
+& = \arg \min_{\mathcal{w}}
+\sum_{v \in \tau} 
+[ 
+	\mathbf{P}_{data}(v) \log(\mathbf{P}_{data}(v)) - \mathbf{P}_{data}(v) \log(\mathbf{P}(\mathcal{v}; \mathcal{w}))
+]
+\\
+
+&= \arg \max_{\mathcal{w}} 
+\sum_{v \in \tau} \mathbf{P}_{data}(\mathcal{v}) \log(\mathbf{P}(\mathcal{v}; \mathcal{w})
+\\
+
+&= \sum_{v \in \tau} \mathbf{P}_{data}(\mathcal{v})
+\arg \max_{\mathcal{w}} \log(\mathbf{P}(\mathcal{v}; \mathcal{w}))
+\
+\text{when training}
+
+
+\end{align*}
+\\
+
+\text{where $\mathbf{P}_{data}(\mathcal{v}) = \frac{1}{N}\sum_{i=1}^{N} \delta(\mathcal{v} - \mathcal{v}_{i})$, $\delta$ is the dirac delta function}
+$$
+
+$$
+\begin{align*}
+
+\ln \mathbf{P}(v; w) 
+
+&= \ln \sum_{h} \mathbf{P}(v, h;w)
+\\
+
+&= \ln \sum_{h} \frac{1}{Z} e^{-E(v, h; w)} = \ln \frac{\sum_{h} e^{-E(v, h; w)}}{Z}
+\\
+
+&= \ln \sum_{h}e^{-E(v, h; w)} - \ln \sum_{v, h}e^{-E(v, h; w)}
+
+
+\end{align*}
+$$
+
+Take gradient of each part w.r.t $w $
+
+The former part
+
+Gradient of weight
+$$
+\begin{align*}
+
+\frac{\partial}{\partial w_{ijk}} \ln \sum_{h}e^{-E(v, h; w)} &=  \frac{1}{\sum_{h}e^{-E(v, h; w)}} \frac{\partial}{\partial w_{ijk}} \sum_{h}e^{-E(v, h; w)}
+
+\\
+&= \frac{1}{\sum_{h}e^{-E(v, h; w)}} \frac{\partial}{\partial w_{ijk}} \sum_{h}e^{-E(v, h; w)}
+\\
+
+&= \frac{1}{\sum_{h}e^{-E(v, h; w)}} \sum_{h} \frac{\partial}{\partial w_{ijk}} e^{-E(v, h; w)}
+\\
+
+&= \frac{1}{\sum_{h}e^{-E(v, h; w)}} \sum_{h} e^{-E(v, h;w)} \frac{\partial}{\partial w_{ijk}} (-E(v, h; w))
+\\
+
+&=- \frac{\sum_{h} e^{-E(v, h;w)} \frac{\partial}{\partial w_{ijk}} E(v, h; w)}{\sum_{h}e^{-E(v, h; w)}}
+\\
+
+&=- \sum_{h} \frac{e^{-E(v, h;w)}}{\sum_{h}e^{-E(v, h; w)}} \frac{\partial}{\partial w_{ijk}} E(v, h; w)
+\\
+
+&=- \sum_{h} \frac{\frac{e^{-E(v, h;w)}}{Z}}{\sum_{h}  \frac{e^{-E(v, h; w)}}{Z} } \frac{\partial}{\partial w_{ijk}} E(v, h; w)
+\\
+
+&= - \sum_{h}\mathbf{P}(h|v;w) \frac{\partial}{\partial w_{ijk}} E(v, h; w)
+\\
+
+&= \sum_{h}\mathbf{P}(h|v;w) \frac{\partial}{\partial w_{ijk}} \sum_{i}\sum_{jk}(\mathcal{w}_{ijk}h_{i}v_{jk} + b^{v}_{jk}v_{jk} + b^{h}_{i}h_{i}) 
+\\
+
+&= \sum_{h}\mathbf{P}(h|v;w) h_{i}v_{jk} 
+\\
+
+&= \sum_{h_{i} \in \{0, 1\}} \mathbf{P}(h_{i}|v;w) h_{i}v_{jk} \sum_{h_{-i}}\mathbf{P}(h_{i}|v;w) 
+\\
+
+&= \mathbf{P}(h_{i} = 1|v;w) v_{jk} \sum_{h_{-i}}\mathbf{P}(h_{i}|v;w)
+\\
+
+&= \mathbf{P}(h_{i} = 1|v;w) v_{jk} \
+\text{
+since 
+$
+\sum_{h_{-i}}\mathbf{P}(h_{i}|v;w) = \sum_{h_{i^{\prime}}}
+\frac{ \prod_{i^{\prime} \neq i} \mathbf{P}(h_{i^{\prime}}|v;w)}{\sum_{h_{i^{\prime}}} \prod_{i^{\prime} \neq i} \mathbf{P}(h_{i^{\prime}}|v;w)}
+= 1
+$
+}
+
+
+\end{align*}
+$$
+
+
+
+Gradient of $v$ bias
+$$
+\begin{align*}
+
+\frac{\partial}{\partial b^{v}_{jk}} \ln \sum_{h}e^{-E(v, h; w)} &=  \frac{1}{\sum_{h}e^{-E(v, h; w)}} \frac{\partial}{\partial b^{v}_{jk}} \sum_{h}e^{-E(v, h; w)}
+
+\\
+&= \frac{1}{\sum_{h}e^{-E(v, h; w)}} \frac{\partial}{\partial b^{v}_{jk}} \sum_{h}e^{-E(v, h; w)}
+\\
+
+&= \frac{1}{\sum_{h}e^{-E(v, h; w)}} \sum_{h} \frac{\partial}{\partial b^{v}_{jk}} e^{-E(v, h; w)}
+\\
+
+&= \frac{1}{\sum_{h}e^{-E(v, h; w)}} \sum_{h} e^{-E(v, h;w)} \frac{\partial}{\partial b^{v}_{jk}} (-E(v, h; w))
+\\
+
+&=- \frac{\sum_{h} e^{-E(v, h;w)} \frac{\partial}{\partial b^{v}_{jk}} E(v, h; w)}{\sum_{h}e^{-E(v, h; w)}}
+\\
+
+&=- \sum_{h} \frac{e^{-E(v, h;w)}}{\sum_{h}e^{-E(v, h; w)}} \frac{\partial}{\partial b^{v}_{jk}} E(v, h; w)
+\\
+
+&=- \sum_{h} \frac{\frac{e^{-E(v, h;w)}}{Z}}{\sum_{h}  \frac{e^{-E(v, h; w)}}{Z} } \frac{\partial}{\partial b^{v}_{jk}} E(v, h; w)
+\\
+
+&= - \sum_{h}\mathbf{P}(h|v;w) \frac{\partial}{\partial b^{v}_{jk}} E(v, h; w)
+\\
+
+&= \sum_{h}\mathbf{P}(h|v;w) \frac{\partial}{\partial b^{v}_{jk}} \sum_{i}\sum_{jk}(\mathcal{w}_{ijk}h_{i}v_{jk} + b^{v}_{jk}v_{jk} + b^{h}_{i}h_{i}) 
+\\
+
+&= \sum_{h}\mathbf{P}(h|v;w)v_{jk} 
+\\
+
+&= v_{jk}
+
+
+\end{align*}
+$$
+
+
+Gradient of $h$ bias
+$$
+\begin{align*}
+
+\frac{\partial}{\partial b^{h}_{i}} \ln \sum_{h}e^{-E(v, h; w)} &=  \frac{1}{\sum_{h}e^{-E(v, h; w)}} \frac{\partial}{\partial b^{h}_{i}} \sum_{h}e^{-E(v, h; w)}
+
+\\
+&= \frac{1}{\sum_{h}e^{-E(v, h; w)}} \frac{\partial}{\partial b^{h}_{i}} \sum_{h}e^{-E(v, h; w)}
+\\
+
+&= \frac{1}{\sum_{h}e^{-E(v, h; w)}} \sum_{h} \frac{\partial}{\partial b^{h}_{i}} e^{-E(v, h; w)}
+\\
+
+&= \frac{1}{\sum_{h}e^{-E(v, h; w)}} \sum_{h} e^{-E(v, h;w)} \frac{\partial}{\partial b^{h}_{i}} (-E(v, h; w))
+\\
+
+&=- \frac{\sum_{h} e^{-E(v, h;w)} \frac{\partial}{\partial b^{h}_{i}} E(v, h; w)}{\sum_{h}e^{-E(v, h; w)}}
+\\
+
+&=- \sum_{h} \frac{e^{-E(v, h;w)}}{\sum_{h}e^{-E(v, h; w)}} \frac{\partial}{\partial b^{h}_{i}} E(v, h; w)
+\\
+
+&=- \sum_{h} \frac{\frac{e^{-E(v, h;w)}}{Z}}{\sum_{h}  \frac{e^{-E(v, h; w)}}{Z} } \frac{\partial}{\partial b^{h}_{i}} E(v, h; w)
+\\
+
+&= - \sum_{h}\mathbf{P}(h|v;w) \frac{\partial}{\partial b^{h}_{i}} E(v, h; w)
+\\
+
+&= \sum_{h}\mathbf{P}(h|v;w) \frac{\partial}{\partial b^{h}_{i}} \sum_{i}\sum_{jk}(\mathcal{w}_{ijk}h_{i}v_{jk} + b^{v}_{jk}v_{jk} + b^{h}_{i}h_{i}) 
+\\
+
+&= \sum_{h}\mathbf{P}(h|v;w)h_{i}
+\\
+
+&=  \sum_{h_{i} \in \{0, 1\}} \mathbf{P}(h_{i}|v;w)h_{i} \sum_{h_{-i}}\mathbf{P}(h_{-i}|v;w)
+\\
+
+&= \mathbf{P}(h_{i} = 1|v;w)
+
+
+\end{align*}
+$$
+
+
+
+
+The latter part
+
+The gradient of weight
+
+$$
+\begin{align*}
+
+\frac{\partial}{\partial w_{ijk}}  - \ln \sum_{v, h}e^{-E(v, h; w)} 
+&= - \frac{1}{\sum_{v, h}e^{-E(v, h; w)}} \frac{\partial}{\partial w_{ijk}} \sum_{v, h}e^{-E(v, h; w)}
+\\
+
+&= - \frac{1}{\sum_{v, h}e^{-E(v, h; w)}} \sum_{v, h} e^{-E(v, h; w)} \frac{\partial}{\partial w_{ijk}} (-E(v, h; w))
+\\
+
+&= - \frac{1}{\sum_{v, h}e^{-E(v, h; w)}} \sum_{v, h} e^{-E(v, h; w)} \frac{\partial}{\partial w_{ijk}}
+\sum_{i, j, k} (\mathcal{w}_{ijk}h_{i}v_{jk} + \frac{1}{d_{h}} \tilde{b}^{v}_{jk}v_{jk} + \frac{1}{d_{v}d_{k}} \tilde{b}^{h}_{i}h_{i}) 
+\\
+
+&= - \frac{1}{\sum_{v, h}e^{-E(v, h; w)}} \sum_{v, h} e^{-E(v, h; w)}h_{i}v_{jk}
+\\
+
+&= - \sum_{v, h} \frac{e^{-E(v, h; w)}}{Z} h_{i}v_{jk}
+\\
+
+&= - \sum_{v, h} \mathbf{P}(v, h; w) h_{i}v_{jk}
+\\
+
+&= - \sum_{v} \mathbf{P}(v; w) \textcolor{blue} {\sum_{h} \mathbf{P}(h|v;w)h_{i}v_{jk}}
+\
+\text{where the blue part is the same as the former}
+\\
+
+&= -\mathbf{E}_{v \sim \mathbf{P}(v;w)} [ \mathbf{P}(h_{i} = 1|v;w) v_{jk} ]
+\\
+
+&= -\mathbf{P}(h_{i} = 1|\bar{v};w) \bar{v}_{jk} \
+\text{where $\bar{v}$ is the predicted $v$}
+
+\end{align*}
+$$
+
+
+
+The gradient of $v$ bias
+$$
+\begin{align*}
+
+\frac{\partial}{\partial b^{v}_{jk}}  - \ln \sum_{v, h}e^{-E(v, h; w)} 
+&= - \frac{1}{\sum_{v, h}e^{-E(v, h; w)}} \frac{\partial}{\partial b^{v}_{jk}} \sum_{v, h}e^{-E(v, h; w)}
+\\
+
+&= - \frac{1}{\sum_{v, h}e^{-E(v, h; w)}} \sum_{v, h} e^{-E(v, h; w)} \frac{\partial}{\partial b^{v}_{jk}} (-E(v, h; w))
+\\
+
+&= - \frac{1}{\sum_{v, h}e^{-E(v, h; w)}} \sum_{v, h} e^{-E(v, h; w)} \frac{\partial}{\partial b^{v}_{jk}} \sum_{i, j, k} (\mathcal{w}_{ijk}h_{i}v_{jk} + \frac{1}{d_{h}} \tilde{b}^{v}_{jk}v_{jk} + \frac{1}{d_{v}d_{k}} \tilde{b}^{h}_{i}h_{i}) 
+\\
+
+&= - \frac{1}{\sum_{v, h}e^{-E(v, h; w)}} \sum_{v, h} e^{-E(v, h; w)}v_{jk}
+\\
+
+&= - \sum_{v, h} \frac{e^{-E(v, h; w)}}{Z} v_{jk}
+\\
+
+&= - \sum_{v, h} \mathbf{P}(v, h; w) v_{jk}
+\\
+
+&= - \sum_{v} \mathbf{P}(v; w) \textcolor{blue} {\sum_{h} \mathbf{P}(h|v;w)v_{jk}}
+\
+\text{where the blue part is the same as the former}
+\\
+
+&= -\mathbf{E}_{v \sim \mathbf{P}(v;w)} [v_{jk} ]
+\\
+
+&= \bar{v}_{jk} \
+\text{where $\bar{v}$ is the predicted $v$}
+
+\end{align*}
+$$
+
+
+The gradient of $h$ bias
+$$
+\begin{align*}
+
+\frac{\partial}{\partial b^{h}_{i}}  - \ln \sum_{v, h}e^{-E(v, h; w)} 
+&= - \frac{1}{\sum_{v, h}e^{-E(v, h; w)}} \frac{\partial}{\partial b^{h}_{i}} \sum_{v, h}e^{-E(v, h; w)}
+\\
+
+&= - \frac{1}{\sum_{v, h}e^{-E(v, h; w)}} \sum_{v, h} e^{-E(v, h; w)} \frac{\partial}{\partial b^{h}_{i}} (-E(v, h; w))
+\\
+
+&= - \frac{1}{\sum_{v, h}e^{-E(v, h; w)}} \sum_{v, h} e^{-E(v, h; w)} \frac{\partial}{\partial b^{h}_{i}} \sum_{i, j, k} (\mathcal{w}_{ijk}h_{i}v_{jk} + \frac{1}{d_{h}} \tilde{b}^{v}_{jk}v_{jk} + \frac{1}{d_{v}d_{k}} \tilde{b}^{h}_{i}h_{i}) 
+\\
+
+&= - \frac{1}{\sum_{v, h}e^{-E(v, h; w)}} \sum_{v, h} e^{-E(v, h; w)} h_{i}
+\\
+
+&= - \sum_{v, h} \frac{e^{-E(v, h; w)}}{Z} h_{i}
+\\
+
+&= - \sum_{v, h} \mathbf{P}(v, h; w) h_{i}
+\\
+
+&= - \sum_{v} \mathbf{P}(v; w) \textcolor{blue} {\sum_{h} \mathbf{P}(h|v;w)h_{i}}
+\
+\text{where the blue part is the same as the former}
+\\
+
+&= -\mathbf{E}_{v \sim \mathbf{P}(v;w)} [ \mathbf{P}(h_{i}=1|v; w) ]
+\\
+
+&= \mathbf{P}(h_{i}=1|\bar{v}; w)  \
+\text{where $\bar{v}$ is the predicted $v$}
+
+\end{align*}
+$$
